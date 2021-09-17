@@ -1,3 +1,4 @@
 dist
 __pycache__
 tests.py
+borsh_python.egg-info

@@ -1,7 +1,8 @@
 from distutils.core import setup
+import setuptools
 setup(
   name = 'borsh-python',
-  packages = setuptools.find_packages(where='borsh'),
+  packages = ['borsh', 'borsh.types'],
   version = '0.1.1',
   license='MIT',
   description = 'A Borsh library for Python 3.',
