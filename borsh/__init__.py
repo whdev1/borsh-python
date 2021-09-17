@@ -37,7 +37,9 @@ class schema:
             if not schema_def[key] in vars(types).values():
                 # check for a constructible type
                 constructible_types = [
+                    types.dynamic_array,
                     types.fixed_array,
+                    types.hashset,
                     types.option
                 ]
                 if not schema_def[key].__class__ in constructible_types:
@@ -145,18 +147,53 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
     # check for a fixed_array
     elif isinstance(_type, types.fixed_array):
         # get the length of the fixed array
-        byte_length = _type.length
+        obj_length = _type.length
 
-        # decode the specified number of bytes into a list of u8's
-        u8_results = []
-        for n in range(byte_length):
-            u8_results.append(data[position])
-            position += 1
+        # decode the specified number of objects into a list
+        obj_results = []
+        for n in range(obj_length):
+            temp_results, position = _deserialize_single(
+                key,
+                _type.array_type,
+                data,
+                position,
+                results
+            )
+            obj_results.append(results[key])
         
         # add the list to the results
-        results[key] = u8_results
+        results[key] = obj_results
     # check for a dynamic array
-    elif _type == types.dynamic_array:
+    elif isinstance(_type, types.dynamic_array):
+        # first, read the u32 size specifier
+        byte_width = 4
+
+        # get the correct number of bytes, shifting left each time
+        # to conform with the little endian format of Borsh
+        obj_length = 0
+        for n in range(byte_width):
+            obj_length <<= 8
+            obj_length += data[position + (byte_width - (n + 1))]
+
+        # increment the buffer pointer
+        position += byte_width
+
+        # decode the specified number of objects into a list
+        obj_results = []
+        for n in range(obj_length):
+            temp_results, position = _deserialize_single(
+                key,
+                _type.array_type,
+                data,
+                position,
+                results
+            )
+            obj_results.append(results[key])
+        
+        # add the list to the results
+        results[key] = obj_results
+    # check for a hashset
+    elif isinstance(_type, types.hashset):
         # first, read the u32 size specifier
         byte_width = 4
 
@@ -170,14 +207,21 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
         # increment the buffer pointer
         position += byte_width
 
-        # get the specified number of bytes as u8's
-        u8_results = []
+        # get the hashset data
+        set_data = []
         for n in range(length):
-            u8_results.append(data[position])
-            position += 1
-
-        # add the list to the results
-        results[key] = u8_results
+            ret_data = {}
+            ret_data, position = _deserialize_single(
+                key,
+                _type.hashset_type,
+                data,
+                position,
+                results
+            )
+            set_data.append(ret_data[key])
+        
+        # convert the data to a set and add it to the results dict
+        results[key] = set(set_data)
     # check for string data
     elif _type == types.string:
         # first, read the u32 size specifier
@@ -284,19 +328,43 @@ def _serialize_single(key, _type, data: object) -> bytes:
     # check for a fixed_array
     elif isinstance(_type, types.fixed_array):
         # get the length of the fixed array
-        byte_length = _type.length
+        obj_length = _type.length
         
-        # loop over the list that we received and add each int to the byte string
-        for n in range(byte_length):
-            results += bytes(data[key][n : n + 1])
-    # check for a dynamic_array
-    elif _type == types.dynamic_array:
+        # loop over the list that we received and add each value to the byte string
+        for n in range(obj_length):
+            results += _serialize_single(
+                key,
+                _type.array_type,
+                {key: data[key][n]}
+            )
+    # check for a dynamic_array or a fixed_array
+    elif isinstance(_type, types.dynamic_array):
         # store the length of the array as a u32
         results = len(data[key]).to_bytes(4, byteorder='little')
         
-        # loop over the list that we received and add each int to the byte string
+        # loop over the list that we received and add each value to the byte string
         for n in range(len(data[key])):
-            results += bytes(data[key][n : n + 1])
+            results += _serialize_single(
+                key,
+                _type.array_type,
+                {key: data[key][n]}
+            )
+    # check for a hashset
+    elif isinstance(_type, types.hashset):
+        # store the length of the set as a u32
+        results = len(data[key]).to_bytes(4, byteorder='little')
+
+        # sort the set
+        data[key] = sorted(data[key])
+        
+        # loop over the list that we received and add each int to the byte string
+        set_list = list(data[key])
+        for n in range(len(data[key])):
+            results += _serialize_single(
+                key,
+                _type.hashset_type,
+                {key: set_list[n]}
+            )
     # check for a string
     elif _type == types.string:
         # store the length of the string as a u32

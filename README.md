@@ -14,16 +14,18 @@ from borsh import types
 
 # create an example dict that we will serialize
 example_dict = {
-  'x': 123,
-  'y': 30000,
-  'z': 'hello'
+  'w': 123,
+  'x': 30000,
+  'y': 'hello',
+  'z': [1, 2, 3, 4]
 }
 
 # define the schema for the dict
 example_dict_schema = borsh.schema({
-  'x': types.u8,
-  'y': types.i16,
-  'z': types.string
+  'w': types.u8,
+  'x': types.i16,
+  'y': types.string,
+  'z': types.dynamic_array(types.i8)
 })
 ```
 
@@ -33,7 +35,7 @@ We can serialize `example_dict` by calling the `serialize` method and providing 
 serialized_bytes = borsh.serialize(example_dict_schema, example_dict)
 
 print(serialized_bytes)
-# b'{0u\x05\x00\x00\x00hello'
+# b'{0u\x05\x00\x00\x00hello\x04\x00\x00\x00\x01\x02\x03\x04'
 ```
 
 This byte string can be deserialized by calling the `deserialize` method and providing the same schema:
@@ -42,7 +44,7 @@ This byte string can be deserialized by calling the `deserialize` method and pro
 deserialized_data = borsh.deserialize(example_dict_schema, serialized_bytes)
 
 print(deserialized_data)
-# {'x': 123, 'y': 30000, 'z': 'hello'}
+# {'w': 123, 'x': 30000, 'y': 'hello', 'z': [1, 2, 3, 4]}
 ```
 
 Borsh data streams are often base64 encoded. This library can handle these streams when used in conjunction with the `base64` library. For example:
@@ -52,16 +54,17 @@ import base64
 import borsh
 from borsh import types
 
-base64_borsh_data = base64.b64decode('ezB1BQAAAGhlbGxv')
+base64_borsh_data = base64.b64decode('ezB1BQAAAGhlbGxvBAAAAAECAwQ=')
 
 example_dict_schema = borsh.schema({
-  'x': types.u8,
-  'y': types.i16,
-  'z': types.string
+  'w': types.u8,
+  'x': types.i16,
+  'y': types.string,
+  'z': types.dynamic_array(types.i8)
 })
 
 print(borsh.deserialize(example_dict_schema, base64_borsh_data))
-# {'x': 123, 'y': 30000, 'z': 'hello'}
+# {'w': 123, 'x': 30000, 'y': 'hello', 'z': [1, 2, 3, 4]}
 ```
 
 ## Type Mapping
@@ -69,10 +72,11 @@ This library supports the following Borsh types, each of which is mapped to a re
 
 | Borsh Type      | Python Type      |
 | --------------- | ---------------- |
-| `dynamic_array` | `List[int]`      |
-| `fixed_array`   | `List[int]`      |
+| `dynamic_array` | `List[type]`     |
+| `fixed_array`   | `List[type]`     |
 | `f32`           | `float`          |
 | `f64`           | `float`          |
+| `hashset`       | `Set[type]`      |
 | `i8`            | `int`            |
 | `i16`           | `int`            |
 | `i32`           | `int`            |
@@ -95,7 +99,6 @@ The following Borsh types are not yet implemented in this library:
 | `enum`          |
 | `fields`        |
 | `hashmap`       |
-| `hashset`       |
 | `named_fields`  |
 | `unnamed_fields`|
 | `struct`        |

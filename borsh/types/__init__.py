@@ -3,15 +3,32 @@ from enum import auto, Enum, unique
 float_offset = 30
 signed_int_offset = 20
 
+class _dynamic_array:
+    array_type = None
+
+    def __init__(self, _type):
+        self.array_type = _type
+
 class _fixed_array:
     length = None
+    array_type = None
 
-    def __init__(self, length: int):
+    def __init__(self, _type, length: int):
         if not isinstance(length, int):
             length_class_name = length.__class__.__name__
             raise TypeError('invalid type \'' + str(length_class_name) + '\' for fixed_array length (expected \'int\')')
 
         self.length = length
+        self.array_type = _type
+
+class _hashset:
+    hashset_type = None
+
+    def __init__(self, hashset_type):
+        if not hashset_type in vars(types).values():
+            raise ValueError('constructor for \'hashset\' requires a borsh.types object as an argument')
+        
+        self.hashset_type = hashset_type
 
 class _option:
     option_type = None
@@ -46,7 +63,7 @@ class types:
 
     # array types
     fixed_array = _fixed_array
-    dynamic_array = auto()
+    dynamic_array = _dynamic_array
 
     # struct type
     struct = auto()
@@ -61,7 +78,7 @@ class types:
 
     # hash types
     hashmap = auto()
-    hashset = auto()
+    hashset = _hashset
 
     # option type
     option = _option
