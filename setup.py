@@ -1,14 +1,14 @@
 from distutils.core import setup
 setup(
   name = 'borsh-python',
-  packages = ['borsh'],
-  version = '0.1.0',
+  packages = setuptools.find_packages(where='borsh'),
+  version = '0.1.1',
   license='MIT',
   description = 'A Borsh library for Python 3.',
   author = 'whdev1',
   author_email = '',
-  url = 'https://github.com/whdev1/libborsh-py',
-  download_url = 'https://github.com/whdev1/libborsh-py/archive/refs/tags/v0.1.0.tar.gz',
+  url = 'https://github.com/whdev1/borsh-python',
+  download_url = 'https://github.com/whdev1/libborsh-py/archive/refs/tags/v0.1.1.tar.gz',
   keywords = ['Borsh', 'Binary', 'Stream'],
   install_requires=[],
   classifiers=[
