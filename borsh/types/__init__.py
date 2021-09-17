@@ -35,7 +35,8 @@ class _hashmap:
     hashmap_value_type = None
 
     def __init__(self, hashmap_key_type, hashmap_value_type):
-        if not hashmap_key_type in vars(types).values() or not hashmap_value_type in vars(types).values():
+        if not hashmap_key_type in vars(types).values() or not hashmap_value_type in vars(types).values() and \
+            not hashmap_key_type.__class__ in vars(types).values() or not hashmap_value_type.__class__ in vars(types).values():
             raise ValueError('constructor for \'hashmap\' requires two borsh.types object as arguments')
         
         self.hashmap_key_type = hashmap_key_type
@@ -49,7 +50,7 @@ class _hashset:
     hashset_type = None
 
     def __init__(self, hashset_type):
-        if not hashset_type in vars(types).values():
+        if not option_type in vars(types).values() and not option_type.__class__ in vars(types).values():
             raise ValueError('constructor for \'hashset\' requires a borsh.types object as an argument')
         
         self.hashset_type = hashset_type
@@ -62,7 +63,7 @@ class _option:
     option_type = None
 
     def __init__(self, option_type):
-        if not option_type in vars(types).values():
+        if not option_type in vars(types).values() and not option_type.__class__ in vars(types).values():
             raise ValueError('constructor for \'option\' requires a borsh.types object as an argument')
         
         self.option_type = option_type

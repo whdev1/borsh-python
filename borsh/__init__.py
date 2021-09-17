@@ -65,6 +65,10 @@ def deserialize(schema: schema, data: bytes) -> dict:
     # initialize a position in the buffer
     position = 0
 
+    # give the user a nice error if they accidentally passed the wrong data type
+    if not isinstance(data, bytes):
+        raise TypeError('deserialize() expects data to be \'bytes\', not \'' + str(data.__class__.__name__) + '\'')
+
     # loop over all of the keys in the schema. catch an index error when there
     # is not enough data for the specified schema
     try:
@@ -483,10 +487,15 @@ def _serialize_single(key, _type, _schema, data: object) -> bytes:
     elif isinstance(_type, types.option):
         # see if the key is present in the data
         if key in data.keys():
+            # make a copy of the schema and replace the option with
+            # the option subtype
+            _schema_dup = _schema
+            _schema_dup._inner_dict[key] = _type.option_type
+
             results = b'\1' + _serialize_single(
                 key,
                 _type.option_type,
-                _schema,
+                _schema_dup,
                 data
             )
         else:
