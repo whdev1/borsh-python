@@ -86,3 +86,16 @@ This library supports the following Borsh types, each of which is mapped to a re
 | `u64`           | `int`            |
 | `u128`          | `int`            |
 | `unit`          | `None`           |
+
+## Unimplemented Types
+The following Borsh types are not yet implemented in this library:
+
+| Borsh Type      |
+| --------------- |
+| `enum`          |
+| `fields`        |
+| `hashmap`       |
+| `hashset`       |
+| `named_fields`  |
+| `unnamed_fields`|
+| `struct`        |
