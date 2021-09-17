@@ -3,6 +3,13 @@ This is an unofficial Python library for serializing and deserializing data in t
 
 Borsh stands for *Binary Object Representation Serializer for Hashing.* It was originally implemented in Rust for use with the [Near protocol](https://near.org/) with a focus on "consistency, safety, and speed." It is used for serializing data in a number of applications, including the [Solana](https://solana.com) blockchain.
 
+## Installation
+This library can be installed using pip:
+
+```
+pip install borsh-python
+```
+
 ## Usage
 All Borsh byte streams have a *schema* that specifies name and type pairs for each of the values in the stream. The names of the available types are based on Rust and may be found [on this page](https://borsh.io/#pills-specification).
 
