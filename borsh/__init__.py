@@ -41,7 +41,8 @@ class schema:
                     types.fixed_array,
                     types.hashmap,
                     types.hashset,
-                    types.option
+                    types.option,
+                    types.struct
                 ]
                 if not schema_def[key].__class__ in constructible_types:
                     raise TypeError('value \'' + str(schema_def[key]) + '\' is not a valid Borsh type')
@@ -71,6 +72,7 @@ def deserialize(schema: schema, data: bytes) -> dict:
         for key in schema:
             results, position = _deserialize_single(
                 key,
+                schema,
                 schema[key],
                 data,
                 position,
@@ -86,7 +88,7 @@ def deserialize(schema: schema, data: bytes) -> dict:
 #
 # internal method for deserializing a single Borsh object. not intended to be called by user code; use
 # the deserialize() method instead
-def _deserialize_single(key: object, _type: object, data: bytes, position: int, results: dict) -> (dict, int):
+def _deserialize_single(key: object, _schema: schema, _type: object, data: bytes, position: int, results: dict) -> (dict, int):
     # determine what data type it is and perform the correct behavior
     # first, check for a uint type
     if _type in type_groups.uint_types:
@@ -159,6 +161,7 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
         for n in range(obj_length):
             temp_results, position = _deserialize_single(
                 key,
+                _schema,
                 _type.array_type,
                 data,
                 position,
@@ -188,6 +191,7 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
         for n in range(obj_length):
             temp_results, position = _deserialize_single(
                 key,
+                _schema,
                 _type.array_type,
                 data,
                 position,
@@ -218,6 +222,7 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
             ret_data = {}
             ret_data, position = _deserialize_single(
                 key,
+                _schema,
                 _type.hashmap_key_type,
                 data,
                 position,
@@ -228,6 +233,7 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
             ret_data = {}
             ret_data, position = _deserialize_single(
                 key,
+                _schema,
                 _type.hashmap_value_type,
                 data,
                 position,
@@ -260,6 +266,7 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
             ret_data = {}
             ret_data, position = _deserialize_single(
                 key,
+                _schema,
                 _type.hashset_type,
                 data,
                 position,
@@ -302,6 +309,7 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
         if option_present:
             results, position = _deserialize_single(
                 key,
+                _schema,
                 _type.option_type,
                 data,
                 position,
@@ -309,6 +317,28 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
             )
         else:
             results[key] = None
+    # check for a schema
+    elif isinstance(_type, types.struct):
+        # get the corresponding struct definition as a schema
+        struct_schema = schema(_schema[key].struct_dict)
+
+        # loop through all of the keys in the struct
+        struct_data = {}
+        for _key in _type.struct_dict:
+            temp_results = {}
+            temp_results, position = _deserialize_single(
+                _key,
+                _schema,
+                struct_schema[_key],
+                data,
+                position,
+                temp_results
+            )
+            
+            struct_data[_key] = temp_results[_key]
+
+        # add a new struct to the results
+        results[key] = types.struct(struct_data)
     else:
         raise NotImplementedError('deserializing \'' + str(key) + '\' not implemented yet')
 
@@ -329,6 +359,7 @@ def serialize(schema: schema, data: dict) -> bytes:
             results += _serialize_single(
                 key,
                 schema[key],
+                schema,
                 data
             )
     except IndexError as ie:
@@ -341,7 +372,7 @@ def serialize(schema: schema, data: dict) -> bytes:
 #
 # internal method for serializing a single Borsh object. not intended to be called by user code; use
 # the serialize() method instead
-def _serialize_single(key, _type, data: object) -> bytes:
+def _serialize_single(key, _type, _schema, data: object) -> bytes:
     # initialize a byte string to hold the results
     results = b''
 
@@ -386,6 +417,7 @@ def _serialize_single(key, _type, data: object) -> bytes:
             results += _serialize_single(
                 key,
                 _type.array_type,
+                _schema,
                 {key: data[key][n]}
             )
     # check for a dynamic_array or a fixed_array
@@ -398,6 +430,7 @@ def _serialize_single(key, _type, data: object) -> bytes:
             results += _serialize_single(
                 key,
                 _type.array_type,
+                _schema,
                 {key: data[key][n]}
             )
     # check for a hashmap
@@ -411,6 +444,7 @@ def _serialize_single(key, _type, data: object) -> bytes:
             results += _serialize_single(
                 key,
                 _type.hashmap_key_type,
+                _schema,
                 {key: _key}
             )
 
@@ -418,6 +452,7 @@ def _serialize_single(key, _type, data: object) -> bytes:
             results += _serialize_single(
                 key,
                 _type.hashmap_value_type,
+                _schema,
                 {key: data[key][_key]}
             )
     # check for a hashset
@@ -434,6 +469,7 @@ def _serialize_single(key, _type, data: object) -> bytes:
             results += _serialize_single(
                 key,
                 _type.hashset_type,
+                _schema,
                 {key: set_list[n]}
             )
     # check for a string
@@ -450,10 +486,25 @@ def _serialize_single(key, _type, data: object) -> bytes:
             results = b'\1' + _serialize_single(
                 key,
                 _type.option_type,
+                _schema,
                 data
             )
         else:
             results = b'\0'
+    # check for a struct
+    elif isinstance(_type, types.struct):
+        # get a reference to the struct and its schema
+        struct_obj = data[key]
+        struct_schema = schema(_schema[key].struct_dict)
+
+        # loop over all of the keys in the struct
+        for key in struct_obj.struct_dict.keys():
+            results += _serialize_single(
+                key,
+                struct_schema[key],
+                struct_schema,
+                {key: struct_obj.struct_dict[key]}
+            )
     else:
         raise NotImplementedError('serializing \'' + str(_type) + '\' not implemented yet')
 

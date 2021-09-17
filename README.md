@@ -92,6 +92,7 @@ This library supports the following Borsh types, each of which is mapped to a re
 | `i128`          | `int`            |
 | `option(type)`  | `None` or `type` |
 | `string`        | `str`            |
+| `struct`        | `_struct[dict]`  |
 | `u8`            | `int`            |
 | `u16`           | `int`            |
 | `u32`           | `int`            |
@@ -108,4 +109,3 @@ The following Borsh types are not yet implemented in this library:
 | `fields`        |
 | `named_fields`  |
 | `unnamed_fields`|
-| `struct`        |

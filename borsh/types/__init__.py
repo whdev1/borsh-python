@@ -67,6 +67,28 @@ class _option:
         
         self.option_type = option_type
 
+# class _option
+#
+# the internal class representing a Borsh struct. not intended to be directly instantiated
+# by user code; use 'types.struct' instead
+class _struct:
+    struct_dict = None
+
+    def __getitem__(self, index):
+        return self.struct_dict[index]
+
+    def __init__(self, struct_dict: dict):
+        if not isinstance(struct_dict, dict):
+            raise TypeError('constructor for \'struct\' requires a schema-like dict object as an argument')
+
+        self.struct_dict = struct_dict
+
+    def __repr__(self):
+        return str(self.struct_dict)
+
+    def __str__(self):
+        return self.__repr__()
+
 # class types
 #
 # 'types' is essentially a namespace for all of the different Borsh types. it was originally an enum
@@ -103,7 +125,7 @@ class types:
     dynamic_array = _dynamic_array
 
     # struct type
-    struct = auto()
+    struct = _struct
 
     # field types
     fields = auto()
