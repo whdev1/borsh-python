@@ -1,14 +1,19 @@
 from enum import auto, Enum, unique
 
-float_offset = 30
-signed_int_offset = 20
-
+# class _dynamic_array
+#
+# the internal class representing a Borsh dynamic array. not intended to be directly instantiated
+# by user code; use 'types.dynamic_array' instead
 class _dynamic_array:
     array_type = None
 
     def __init__(self, _type):
         self.array_type = _type
 
+# class _fixed_array
+#
+# the internal class representing a Borsh fixed array. not intended to be directly instantiated
+# by user code; use 'types.fixed_array' instead
 class _fixed_array:
     length = None
     array_type = None
@@ -21,6 +26,25 @@ class _fixed_array:
         self.length = length
         self.array_type = _type
 
+# class _hashmap
+#
+# the internal class representing a Borsh hashmap. not intended to be directly instantiated
+# by user code; use 'types.hashmap' instead
+class _hashmap:
+    hashmap_key_type = None
+    hashmap_value_type = None
+
+    def __init__(self, hashmap_key_type, hashmap_value_type):
+        if not hashmap_key_type in vars(types).values() or not hashmap_value_type in vars(types).values():
+            raise ValueError('constructor for \'hashmap\' requires two borsh.types object as arguments')
+        
+        self.hashmap_key_type = hashmap_key_type
+        self.hashmap_value_type = hashmap_value_type
+
+# class _hashset
+#
+# the internal class representing a Borsh hashset. not intended to be directly instantiated
+# by user code; use 'types.hashset' instead
 class _hashset:
     hashset_type = None
 
@@ -30,6 +54,10 @@ class _hashset:
         
         self.hashset_type = hashset_type
 
+# class _option
+#
+# the internal class representing a Borsh optional value. not intended to be directly instantiated
+# by user code; use 'types.option' instead
 class _option:
     option_type = None
 
@@ -38,6 +66,15 @@ class _option:
             raise ValueError('constructor for \'option\' requires a borsh.types object as an argument')
         
         self.option_type = option_type
+
+# class types
+#
+# 'types' is essentially a namespace for all of the different Borsh types. it was originally an enum
+# but this made the 'types.dynamic_array(types.u8)' style syntax impossible. there are offsets added
+# to certain values to ensure that they are unique for comparison
+
+float_offset = 30
+signed_int_offset = 20
 
 class types:
     # unsigned integer types
@@ -77,7 +114,7 @@ class types:
     enum = auto()
 
     # hash types
-    hashmap = auto()
+    hashmap = _hashmap
     hashset = _hashset
 
     # option type
@@ -86,6 +123,10 @@ class types:
     # string type
     string = auto()
 
+# class type_groups
+#
+# this class provides a convenient interface for grouping together types that should
+# have the same processing logic (for example, unsigned integer types)
 class type_groups:
     float_offset = float_offset
     signed_int_offset = signed_int_offset

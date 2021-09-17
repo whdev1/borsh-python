@@ -76,6 +76,7 @@ This library supports the following Borsh types, each of which is mapped to a re
 | `fixed_array`   | `List[type]`     |
 | `f32`           | `float`          |
 | `f64`           | `float`          |
+| `hashmap`       | `dict{k_t, v_t}` |
 | `hashset`       | `Set[type]`      |
 | `i8`            | `int`            |
 | `i16`           | `int`            |
@@ -98,7 +99,6 @@ The following Borsh types are not yet implemented in this library:
 | --------------- |
 | `enum`          |
 | `fields`        |
-| `hashmap`       |
 | `named_fields`  |
 | `unnamed_fields`|
 | `struct`        |

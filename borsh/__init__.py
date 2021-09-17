@@ -39,6 +39,7 @@ class schema:
                 constructible_types = [
                     types.dynamic_array,
                     types.fixed_array,
+                    types.hashmap,
                     types.hashset,
                     types.option
                 ]
@@ -81,6 +82,10 @@ def deserialize(schema: schema, data: bytes) -> dict:
     # return the deserialized results
     return results
 
+# _deserialize_single(key: object, _type: object, data: bytes, position: int, results: dict) -> (dict, int)
+#
+# internal method for deserializing a single Borsh object. not intended to be called by user code; use
+# the deserialize() method instead
 def _deserialize_single(key: object, _type: object, data: bytes, position: int, results: dict) -> (dict, int):
     # determine what data type it is and perform the correct behavior
     # first, check for a uint type
@@ -176,7 +181,7 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
             obj_length += data[position + (byte_width - (n + 1))]
 
         # increment the buffer pointer
-        position += byte_width
+        position += obj_length
 
         # decode the specified number of objects into a list
         obj_results = []
@@ -192,6 +197,48 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
         
         # add the list to the results
         results[key] = obj_results
+    # check for a hashmap
+    elif isinstance(_type, types.hashmap):
+         # first, read the u32 size specifier
+        byte_width = 4
+
+        # get the correct number of bytes, shifting left each time
+        # to conform with the little endian format of Borsh
+        length = 0
+        for n in range(byte_width):
+            length <<= 8
+            length += data[position + (byte_width - (n + 1))]
+
+        # increment the buffer pointer
+        position += byte_width
+
+        # get the hashmap data
+        hashmap_data = {}
+        for n in range(length):
+            ret_data = {}
+            ret_data, position = _deserialize_single(
+                key,
+                _type.hashmap_key_type,
+                data,
+                position,
+                results
+            )
+            new_key = ret_data[key]
+
+            ret_data = {}
+            ret_data, position = _deserialize_single(
+                key,
+                _type.hashmap_value_type,
+                data,
+                position,
+                results
+            )
+            new_value = ret_data[key]
+
+            hashmap_data[new_key] = new_value
+
+        # store the hashmap data that we got
+        results[key] = hashmap_data
     # check for a hashset
     elif isinstance(_type, types.hashset):
         # first, read the u32 size specifier
@@ -290,6 +337,10 @@ def serialize(schema: schema, data: dict) -> bytes:
     # return the serialized results
     return results
 
+# _serialize_single(key: object, _type: object, data: bytes, position: int, results: dict) -> (dict, int)
+#
+# internal method for serializing a single Borsh object. not intended to be called by user code; use
+# the serialize() method instead
 def _serialize_single(key, _type, data: object) -> bytes:
     # initialize a byte string to hold the results
     results = b''
@@ -348,6 +399,26 @@ def _serialize_single(key, _type, data: object) -> bytes:
                 key,
                 _type.array_type,
                 {key: data[key][n]}
+            )
+    # check for a hashmap
+    elif isinstance(_type, types.hashmap):
+        # store the length of the map as a u32
+        results = len(data[key]).to_bytes(4, byteorder='little')
+
+        # loop over all of the pairs in the hashmap
+        for _key in data[key].keys():
+            # serialize the key
+            results += _serialize_single(
+                key,
+                _type.hashmap_key_type,
+                {key: _key}
+            )
+
+            # serialize the value
+            results += _serialize_single(
+                key,
+                _type.hashmap_value_type,
+                {key: data[key][_key]}
             )
     # check for a hashset
     elif isinstance(_type, types.hashset):
