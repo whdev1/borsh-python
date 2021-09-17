@@ -27,6 +27,43 @@ example_dict_schema = borsh.schema({
 })
 ```
 
+We can serialize `example_dict` by calling the `serialize` method and providing the schema:
+
+```Python
+serialized_bytes = borsh.serialize(example_dict_schema, example_dict)
+
+print(serialized_bytes)
+# b'{0u\x05\x00\x00\x00hello'
+```
+
+This byte string can be deserialized by calling the `deserialize` method and providing the same schema:
+
+```Python
+deserialized_data = borsh.deserialize(example_dict_schema, serialized_bytes)
+
+print(deserialized_data)
+# {'x': 123, 'y': 30000, 'z': 'hello'}
+```
+
+Borsh data streams are often base64 encoded. This library can handle these streams when used in conjunction with the `base64` library. For example:
+
+```Python
+import base64
+import borsh
+from borsh import types
+
+base64_borsh_data = base64.b64decode('ezB1BQAAAGhlbGxv')
+
+example_dict_schema = borsh.schema({
+  'x': types.u8,
+  'y': types.i16,
+  'z': types.string
+})
+
+print(borsh.deserialize(example_dict_schema, base64_borsh_data))
+# {'x': 123, 'y': 30000, 'z': 'hello'}
+```
+
 ## Type Mapping
 This library supports the following Borsh types, each of which is mapped to a respective Python type during deserialization.
 

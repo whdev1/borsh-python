@@ -76,7 +76,7 @@ def deserialize(schema: schema, data: bytes) -> dict:
     except IndexError as ie:
         raise IndexError('out of data while reading value for key \'' + str(key) + '\'')
 
-    # return the deserialize results
+    # return the deserialized results
     return results
 
 def _deserialize_single(key: object, _type: object, data: bytes, position: int, results: dict) -> (dict, int):
@@ -216,3 +216,55 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
 
     # return the new result dict and position
     return results, position
+
+# serialize(schema: schema, data: dict) -> bytes
+#
+# serializes the specified dict into a Borsh byte stream
+def serialize(schema: schema, data: dict) -> bytes:
+    results = b''
+
+    # loop over all of the keys in the schema. catch an index error when there
+    # is not enough data for the specified schema
+    try:
+        key = None
+        for key in schema:
+            results += _serialize_single(
+                schema[key],
+                data[key]
+            )
+    except IndexError as ie:
+        raise IndexError('out of data while reading value for key \'' + str(key) + '\'')
+
+    # return the serialized results
+    return results
+
+def _serialize_single(_type, data: object) -> bytes:
+    # initialize a byte string to hold the results
+    results = b''
+
+    # check which type we have received
+    # first, check for a uint type
+    if _type in type_groups.uint_types:
+        # determine the byte width of this uint
+        byte_width = _type
+        
+        # convert the value to a byte string
+        results = data.to_bytes(byte_width, byteorder='little')
+    # then, check for a signed int type
+    elif _type in type_groups.int_types:
+        # determine the byte width of this int
+        byte_width = _type - type_groups.signed_int_offset
+
+        # convert the value to a byte string
+        results = data.to_bytes(byte_width, byteorder='little')
+    # check for a string
+    elif _type == types.string:
+        # store the length of the string as a u32
+        results = len(data).to_bytes(4, byteorder='little')
+
+        # store the actual string
+        results += bytes(data, 'utf-8')
+    else:
+        raise NotImplementedError('serializing \'' + str(_type) + '\' not implemented yet')
+
+    return results
