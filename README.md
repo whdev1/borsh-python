@@ -74,6 +74,44 @@ print(borsh.deserialize(example_dict_schema, base64_borsh_data))
 # {'w': 123, 'x': 30000, 'y': 'hello', 'z': [1, 2, 3, 4]}
 ```
 
+## Structs
+The Borsh format supports a `struct` type which is similar in function to its counterparts in C-family languages. Consider that we are trying to wrap our `example_dict` into a `struct`. We may declare our data and schema as follows:
+
+```Python
+import borsh
+from borsh import types
+
+# define the data dict with our data wrapped in a struct called 'example'
+example_struct_dict = {
+  'example': types.struct({
+    'w': 123,
+    'x': 30000,
+    'y': 'hello',
+    'z': [1, 2, 3, 4]
+  })
+}
+
+# define a schema for our new struct
+example_struct_schema = {
+  'example': types.struct({
+    'w': types.u8,
+    'x': types.i16,
+    'y': types.string,
+    'z': types.dynamic_array(types.i8)
+  })
+}
+```
+
+We may serialize and deserialize our `struct` like this:
+
+```Python
+serialized_bytes = borsh.serialize(example_struct_schema, example_struct_dict)
+
+example_struct = borsh.deserialize(example_struct_schema, serialized_bytes)['example']
+print(example_struct['y'])
+# hello
+```
+
 ## Type Mapping
 This library supports the following Borsh types, each of which is mapped to a respective Python type during deserialization.
 
@@ -83,7 +121,7 @@ This library supports the following Borsh types, each of which is mapped to a re
 | `fixed_array`   | `List[type]`     |
 | `f32`           | `float`          |
 | `f64`           | `float`          |
-| `hashmap`       | `dict{k_t, v_t}` |
+| `hashmap`       | `dict{k_t: v_t}` |
 | `hashset`       | `Set[type]`      |
 | `i8`            | `int`            |
 | `i16`           | `int`            |
