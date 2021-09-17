@@ -132,7 +132,12 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
             position += 1
 
         # unpack the float and add it to the results
-        results[key] = struct.unpack('f', buffer)[0]
+        if len(buffer) == 4:
+            results[key] = struct.unpack('f', buffer)[0]
+        elif len(buffer) == 8:
+            results[key] = struct.unpack('d', buffer)[0]
+        else:
+            raise ValueError('invalid byte width ' + str(len(buffer)) + ' for float type')
     # check for a unit type
     elif _type == types.unit:
         # add None for this key
@@ -211,6 +216,8 @@ def _deserialize_single(key: object, _type: object, data: bytes, position: int, 
                 position,
                 results
             )
+        else:
+            results[key] = None
     else:
         raise NotImplementedError('deserializing \'' + str(key) + '\' not implemented yet')
 
@@ -229,8 +236,9 @@ def serialize(schema: schema, data: dict) -> bytes:
         key = None
         for key in schema:
             results += _serialize_single(
+                key,
                 schema[key],
-                data[key]
+                data
             )
     except IndexError as ie:
         raise IndexError('out of data while reading value for key \'' + str(key) + '\'')
@@ -238,7 +246,7 @@ def serialize(schema: schema, data: dict) -> bytes:
     # return the serialized results
     return results
 
-def _serialize_single(_type, data: object) -> bytes:
+def _serialize_single(key, _type, data: object) -> bytes:
     # initialize a byte string to hold the results
     results = b''
 
@@ -249,21 +257,64 @@ def _serialize_single(_type, data: object) -> bytes:
         byte_width = _type
         
         # convert the value to a byte string
-        results = data.to_bytes(byte_width, byteorder='little')
+        results = data[key].to_bytes(byte_width, byteorder='little')
     # then, check for a signed int type
     elif _type in type_groups.int_types:
         # determine the byte width of this int
         byte_width = _type - type_groups.signed_int_offset
 
         # convert the value to a byte string
-        results = data.to_bytes(byte_width, byteorder='little')
+        results = data[key].to_bytes(byte_width, byteorder='little')
+    # check for a float type
+    elif _type in type_groups.float_types:
+        # determine the byte width of this float
+        byte_width = _type - type_groups.float_offset
+
+        # convert the value to a byte string
+        if byte_width == 4:
+            results = struct.pack('f', data[key])
+        elif byte_width == 8:
+            results = struct.pack('d', data[key])
+        else:
+            raise ValueError('invalid byte width ' + str(byte_width) + ' for float type')
+    # check for a unit type
+    elif _type == types.unit:
+        # don't do anything; return an empty byte string
+        pass
+    # check for a fixed_array
+    elif isinstance(_type, types.fixed_array):
+        # get the length of the fixed array
+        byte_length = _type.length
+        
+        # loop over the list that we received and add each int to the byte string
+        for n in range(byte_length):
+            results += bytes(data[key][n : n + 1])
+    # check for a dynamic_array
+    elif _type == types.dynamic_array:
+        # store the length of the array as a u32
+        results = len(data[key]).to_bytes(4, byteorder='little')
+        
+        # loop over the list that we received and add each int to the byte string
+        for n in range(len(data[key])):
+            results += bytes(data[key][n : n + 1])
     # check for a string
     elif _type == types.string:
         # store the length of the string as a u32
-        results = len(data).to_bytes(4, byteorder='little')
+        results = len(data[key]).to_bytes(4, byteorder='little')
 
         # store the actual string
-        results += bytes(data, 'utf-8')
+        results += bytes(data[key], 'utf-8')
+    # check for an option
+    elif isinstance(_type, types.option):
+        # see if the key is present in the data
+        if key in data.keys():
+            results = b'\1' + _serialize_single(
+                key,
+                _type.option_type,
+                data
+            )
+        else:
+            results = b'\0'
     else:
         raise NotImplementedError('serializing \'' + str(_type) + '\' not implemented yet')
 
