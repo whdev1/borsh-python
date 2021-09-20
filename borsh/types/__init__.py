@@ -50,7 +50,7 @@ class _hashset:
     hashset_type = None
 
     def __init__(self, hashset_type):
-        if not option_type in vars(types).values() and not option_type.__class__ in vars(types).values():
+        if not hashset_type in vars(types).values() and not hashset_type.__class__ in vars(types).values():
             raise ValueError('constructor for \'hashset\' requires a borsh.types object as an argument')
         
         self.hashset_type = hashset_type
